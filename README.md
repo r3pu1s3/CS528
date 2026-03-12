@@ -1,2 +1,2 @@
 # CS528
-IoT Project for CS528 @ Umass. The user will be able to wear the ESP32 as a wrist band, and make different gestures to control a speaker such as gestures to pause, continue video, raise or lower volume, or go to the next song. 
+IoT Project for CS528 @ Umass. Automated wheelchair that tracks user’s eye movement both during the day and night to allow those with movement disabilities to accessibly navigate their physical surroundings. This project will try to test two methods for eye tracking: one with IR sensor and one with visible light. The user's forward gaze would be the signal to move forward and gaze left and right would signal turns. 
