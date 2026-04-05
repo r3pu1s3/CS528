@@ -5,7 +5,7 @@ import numpy as np, mediapipe as mp
 import cv2
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python import BaseOptions
-
+import math
 
 
 
@@ -16,12 +16,15 @@ from mediapipe.tasks.python import BaseOptions
 RIGHT_IRIS  = [474, 475, 476, 477]
 LEFT_IRIS = [469, 470, 471, 472]
 
-# these are indices of the eye region
-# L_OUT, L_IN, L_TOP, L_BOT = 33, 133, 159, 145 
-# R_OUT, R_IN, R_TOP, R_BOT = 263, 362, 386, 374
 
+
+# for gaze
 LEFT_EYE = [33, 133, 159, 145]
 RIGHT_EYE = [263, 362, 386, 374]
+
+# for blink
+LEFT_EYE_IDX = [33, 160, 158, 133, 153, 144]
+RIGHT_EYE_IDX = [362, 385, 387, 263, 373, 380]
 
 '''
 converts CV frame to mediapipe object
@@ -79,10 +82,42 @@ def pt(lm, i, w, h):
     # lm[i].x or y gets relative position from 0 to 1
     return np.array([lm[i].x*w, lm[i].y*h], np.float32)
 
+'''
+runs detector and retrieves mesh array
+input:
+detector: mediapipe detector object
+frame: the individual frame
+output:
+error or mesh array lm
+'''
+def run_detector(detector, image):
+    res = detector.detect(image)
+    if not res.face_landmarks:
+        return None
+    return res.face_landmarks[0]
 
+'''
+draws a dot on the frame based on one of the indicies in the mesh
+'''
+def draw_eye_points(frame, lm, eye_indices, w, h):
+    for idx in eye_indices:
+        
+        x, y = pt(lm, idx, w, h)
+        cv2.circle(frame, (x, y), 2, (0, 255, 0), -1)
+'''
+-------------------------------------
+gaze:
+'''
 
+'''
+gets the coordinate of the iris relative to the frame
+'''
 def get_iris_coord(lm, w, h, iris_ids):
     return np.mean([pt(lm, i, w, h) for i in iris_ids], axis=0)
+
+'''
+gets 4 coordinate for the eyes -> for gaze. may not be needed
+'''
 def get_eye_coord(lm, w, h, region_ids):
     out_i, in_i, top_i, bot_i = region_ids
     return pt(lm, out_i, w, h), pt(lm, in_i, w, h), pt(lm, top_i, w, h), pt(lm, bot_i, w, h)
@@ -115,19 +150,6 @@ def eye_xy(lm, iris_ids, region_ids, w, h):
     
     return nx, ny
 
-'''
-runs detector and retrieves mesh array
-input:
-detector: mediapipe detector object
-frame: the individual frame
-output:
-error or mesh array lm
-'''
-def run_detector(detector, image):
-    res = detector.detect(image)
-    if not res.face_landmarks:
-        return None
-    return res.face_landmarks[0]
 
 '''
 averages relative iris pos of both eyes and return general gaze
@@ -149,3 +171,41 @@ def gaze_xy(lm, h, w):
     nx = (lnx + rnx) / 2.0
     ny = (lny + rny) / 2.0
     return nx, ny
+'''
+--------------------------------------------------------------------
+blinking:
+'''
+
+
+
+'''
+calculates euclidean distance 
+'''
+
+def euclidean(p1, p2):
+    return math.hypot(p1[0] - p2[0], p1[1] - p2[1])
+
+'''
+calculates EAR i.e. how wide the eyes are open
+
+'''
+def eye_aspect_ratio(lm, eye_indices, w, h):
+    # gets respective point on the grid -6 in total
+    pts = []
+    for idx in eye_indices:
+        pts.append(pt(lm, idx, w, h))
+    # calculate vertical height of right and left of center
+    vertical_1 = euclidean(pts[1], pts[5])
+    vertical_2 = euclidean(pts[2], pts[4])
+    
+    # calculates horizontal 
+    horizontal = euclidean(pts[0], pts[3])
+
+    
+    # note could raise div by zero error
+    if horizontal <= 1e-6:
+        return 0.0
+
+    # returns EAR ratio
+    return (vertical_1 + vertical_2) / (2.0 * horizontal)
+

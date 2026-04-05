@@ -1,67 +1,21 @@
 import CV
-import cv2
 import time
 import numpy as np
+import cv2
+from Gaze_Classifier import Gaze_Classifier
+from collections import deque
+
 '''
 Compiles all the tools from CV to create UI/control loop for the user
 '''
 
-
-
-# testing
-# cap = CV.initialize_camera(0)
-
-# detector = CV.init_detector()
-# # streams
-# while(True):
-    
-#     # gets and process image
-#     frame = CV.get_frame(cap)
-#     img = CV.to_mp_img(frame)
-    
-#     # gets height and width
-#     h,w = frame.shape[:2]
-    
-#     # get face mesh
-#     lm = CV.run_detector(detector, img)
-    
-#     # get gaze
-#     # nx, ny = None, None
-#     if lm:
-#     #     nx, ny = CV.gaze_xy(lm, h, w)
-    
-#         left_center = CV.get_iris_coord(lm, w, h, CV.LEFT_IRIS)
-#         left_center = (int(left_center[0]), int(left_center[1]))
-        
-#         right_center = CV.get_iris_coord(lm, w, h, CV.RIGHT_IRIS)
-#         right_center = (int(right_center[0]), int(right_center[1]))
-#         cv2.circle(frame, left_center,  2, (0, 255, 0), -1)   # green ring
-#         cv2.circle(frame, right_center,  2, (0, 255, 0), -1)   # green ring
-
-    
-#     # show image
-#     cv2.imshow("Feed", frame)
-    
-#     # print(nx, ny)
-#     if cv2.waitKey(1) & 0xFF == ord('q'):  # wait 1ms, listen for keypress
-#         break
-
-
-
-
-
-
-
-cx, cy = 0.5, 0.5
-HX = 0.01
-HY = 0.08
 def menu():
     while (True):
         pass
 
 
 
-def config():
+def config(t, deadzone, confirm_frames):
     xs, ys = [], []
 
     # initialize camera, detector
@@ -71,9 +25,8 @@ def config():
     
     # get time
     t0 = time.time()
-    global cx, cy
     # run for 4 seconds
-    while time.time() - t0 < 4.0:
+    while time.time() - t0 < t:
         # get and process frame, return gaze
         frame = CV.get_frame(cap)
         h,w = frame.shape[:2]
@@ -81,9 +34,10 @@ def config():
         img = CV.to_mp_img(frame)
 
         lm = CV.run_detector(detector, img)
+        
+        # sample center gaze
         if lm:
             g = CV.gaze_xy(lm, h, w)
-            # g = CV.eye_xy(lm, CV.RIGHT_IRIS, CV.RIGHT_EYE,  h, w)
             xs.append(g[0]); ys.append(g[1])
                 
         cv2.waitKey(1) 
@@ -94,16 +48,28 @@ def config():
         cx, cy = float(np.median(xs)), float(np.median(ys))
         print("center:", cx, cy)
         # eval_js(f"setStatus('calibrated center: {cx:.3f}, {cy:.3f}')")
+        cv2.destroyAllWindows()
+
+        return Gaze_Classifier(cx, cy, deadzone, confirm_frames)
     else:
         print("Failed to calibrate center. Ensure webcam is active.")
 
 
 # does live tracking
-def live_tracking():
-    # testing
+def live_tracking(gc:Gaze_Classifier, closed_threshold = 0.15, open_threshold = 0.2, gesture_window = 3, gesture_cooldown=1.5):
+    # init camera and detector
     cap = CV.initialize_camera(0)
-
     detector = CV.init_detector()
+    
+    # state variables
+    blink_count = 0
+    eye_state = "open"   # states: "open", "closed"
+    avg_ear = 0.0
+    
+    signal_active = False
+    blink_times = deque()
+    last_gesture_time = -1e9
+    last_signal_text = "DEACTIVATED"
     # streams
     while(True):
         
@@ -114,69 +80,100 @@ def live_tracking():
         # gets height and width
         h,w = frame.shape[:2]
         
-        
-        # add sampling to get an overall gaze direction over a interval 
-        # need to find a way to determine if user blinked
-        
         # get face mesh
         lm = CV.run_detector(detector, img)
         
-        # get gaze
-        # nx, ny = None, None
         
         
+        # if mesh  is successfully retrieved
         if lm:
-            nx, ny = CV.gaze_xy(lm, h, w)
-            # nx, ny =CV.eye_xy(lm, CV.RIGHT_IRIS, CV.RIGHT_EYE, h, w)
-            left_center = CV.get_iris_coord(lm, w, h, CV.LEFT_IRIS)
-            left_center = (int(left_center[0]), int(left_center[1]))
-            
-            right_center = CV.get_iris_coord(lm, w, h, CV.RIGHT_IRIS)
-            right_center = (int(right_center[0]), int(right_center[1]))
-            
-            right_eye = CV.get_eye_coord(lm, w, h, CV.RIGHT_EYE)
-            # left_eye = CV.get_eye_coord(lm, w, h, CV.LEFT_EYE)
-            
-            cv2.circle(frame, left_center,  2, (0, 255, 0), -1)   # green ring
-            
-            cv2.circle(frame, right_center,  2, (0, 255, 0), -1)   # green ring
-            
-            for point in right_eye:
-                point = (int(point[0]), int(point[1]))
-                cv2.circle(frame, point,  2, (0, 255, 0), -1)   # green ring
+            # get time
+            now = time.monotonic()
 
-            dx, dy = nx - cx, ny - cy
+            # gets open or closed status:
+            left_ear = CV.eye_aspect_ratio(lm, CV.LEFT_EYE_IDX, w, h)
+            right_ear = CV.eye_aspect_ratio(lm, CV.RIGHT_EYE_IDX, w, h)
+            avg_ear = (left_ear + right_ear) / 2.0
 
-            print(f"Pos:{nx}, {ny} | Center:{cx}, {cy} | Delta: {dx}, {dy} ")
-            if dx < -HX:
-                label = "LEFT"
-            elif dx > HX:
-                label = "RIGHT"
+            if eye_state == "open":
+                status_text = "Eyes open"
+                if avg_ear < closed_threshold:
+                    eye_state = "closed"
+                    # status_text = "Eyes closed"
             else:
-                label = "CENTER"
-            print(label)
-            cv2.putText(frame, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                status_text = "Eyes closed"
+                if avg_ear > open_threshold:
+                    eye_state = "open"
+                    blink_count += 1
+                    # note the time the user blinked
+                    blink_times.append(now)
 
-            # eval_js(f"setStatus('gaze={label} | nx={nx:.3f} ny={ny:.3f} | dx={dx:.3f} dy={dy:.3f}')")
+                    # status_text = "Blink counted"
+            
+            # only keep track of recent blinks
+            while blink_times and (now - blink_times[0] > gesture_window):
+                blink_times.popleft()
+
+            # Trigger only if not in cooldown
+            if now - last_gesture_time >= gesture_cooldown:
+                if len(blink_times) >= 3:
+                    signal_active = not signal_active
+                    last_gesture_time = now
+                    blink_times.clear()
+
+                    if signal_active:
+                        last_signal_text = "ACTIVATED"
+                        print("ACTIVATED")
+                    else:
+                        last_signal_text = "DEACTIVATED"
+                        print("DEACTIVATED")
+
+            # print(blink_count)
+            cv2.putText(frame, f"{last_signal_text}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+            # if activated, track gaze
+            if signal_active:
+                nx, ny = CV.gaze_xy(lm, h, w)
+                
+
+                label, _ = gc.update(nx, ny)
+                # print(f"{nx}| {gc.cx} | {gc.history}")
+                
+                if label == "right":
+                    '''
+                    ROBOT COMMAND CODE FOR RIGHT
+                    '''
+                    pass
+                elif label == "left":
+                    '''             
+                    ROBOT COMMAND CODE FOR LEFT
+                    '''
+                    pass
+                else:
+                    '''
+                    ROBOT COMMAND CODE FOR CENTER
+                    '''
+                    pass
+                print(label)
+                cv2.putText(frame, label, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
         # show image
-        cv2.imshow("Feed", frame)
+        cv2.imshow("Gaze Direction", frame)
         
-        # print(nx, ny)
         if cv2.waitKey(1) & 0xFF == ord('q'):  # wait 1ms, listen for keypress
             break
 
 
+# takes t seconds to config center for gaze
+t=4
+# a threshold to recognize right and left gaze
+deadzone = 0.008
+# number of frames to sample gaze
+frames = 3
+gc = config(t, deadzone, frames)
 
-config()
-live_tracking()
-'''
-control loop: turn on/start (with gesture?) --> two option: 1. config 2. live tracking
---> config --> take 4 second to get center of gaze --> menu
---> live tracking --> track live --> until press a button/or do gesture to go back to menu
---> turn off with gesture
+# live tracking based on coordinate stored in gc gaze classifier
+live_tracking(gc)
 
-state within live tracking:
-1. rotational tracking
-2. lateral tracking
 
-'''
+
