@@ -9,3 +9,7 @@ IoT Project for CS528 @ Umass. Automated wheelchair that tracks user’s eye mov
 3. Download the face landmark model:
    https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task
    Place it in the root of the project folder.
+
+## How To Run
+1. activate the virtual environment via '.\528\Scripts\activate' 
+2. run 'python control.py' to run main control loop
