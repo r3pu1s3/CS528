@@ -1,6 +1,7 @@
 import CV
 import time
 import serial
+import serial.tools.list_ports
 import numpy as np
 import cv2
 from Gaze_Classifier import Gaze_Classifier
@@ -9,9 +10,21 @@ from collections import deque
 
 # Note for MAC command to activate virtual python environment is 
 # source .venv/bin/activate 
-# Additionally, MAC serial port is 
 
-ser = serial.Serial('/dev/tty.usbserial-1140', 115200)
+# Port auto detection
+def find_esp32_port():
+    ports = serial.tools.list_ports.comports()
+    for port in ports:
+        if 'USB' in port.description or 'CP210' in port.description or 'CH340' in port.description:
+            return port.device
+    return None
+
+port = find_esp32_port()
+print(f'Detected port: {port}')
+ser = serial.Serial(port, 115200)
+
+# Hardcoded port on mac
+# ser = serial.Serial('/dev/tty.usbserial-1140', 115200)
 
 
 '''
@@ -163,7 +176,7 @@ def live_tracking(gc:Gaze_Classifier, closed_threshold = 0.15, open_threshold = 
                     '''
                     ROBOT COMMAND CODE FOR CENTER
                     '''
-                    ser.write(b' ')
+                    ser.write(b'w')
             
                 print(label)
                 cv2.putText(frame, label, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
