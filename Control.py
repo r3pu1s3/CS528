@@ -1,9 +1,18 @@
 import CV
 import time
+import serial
 import numpy as np
 import cv2
 from Gaze_Classifier import Gaze_Classifier
 from collections import deque
+
+
+# Note for MAC command to activate virtual python environment is 
+# source .venv/bin/activate 
+# Additionally, MAC serial port is 
+
+ser = serial.Serial('/dev/tty.usbserial-1140', 115200)
+
 
 '''
 Compiles all the tools from CV to create UI/control loop for the user
@@ -12,8 +21,6 @@ Compiles all the tools from CV to create UI/control loop for the user
 def menu():
     while (True):
         pass
-
-
 
 def config(t, deadzone, confirm_frames):
     xs, ys = [], []
@@ -138,25 +145,29 @@ def live_tracking(gc:Gaze_Classifier, closed_threshold = 0.15, open_threshold = 
 
                 label, _ = gc.update(nx, ny)
                 # print(f"{nx}| {gc.cx} | {gc.history}")
-                
-                if label == "right":
+
+        
+                if label == "RIGHT":
                     '''
                     ROBOT COMMAND CODE FOR RIGHT
                     '''
-                    pass
-                elif label == "left":
+                    ser.write(b'd')
+                    
+                elif label == "LEFT":
                     '''             
                     ROBOT COMMAND CODE FOR LEFT
                     '''
-                    pass
+                    ser.write(b'a')
+                    
                 else:
                     '''
                     ROBOT COMMAND CODE FOR CENTER
                     '''
-                    pass
+                    ser.write(b' ')
+            
                 print(label)
                 cv2.putText(frame, label, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-
+        
         # show image
         cv2.imshow("Gaze Direction", frame)
         
@@ -170,6 +181,7 @@ t=4
 deadzone = 0.008
 # number of frames to sample gaze
 frames = 3
+
 gc = config(t, deadzone, frames)
 
 # live tracking based on coordinate stored in gc gaze classifier

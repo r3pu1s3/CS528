@@ -3,3 +3,17 @@ __pycache__/
 528/
 
 face_landmarker.task
+
+.vscode/
+.devcontainer/
+
+.venv/
+
+.DS_Store
+
+*.pyc
+*.bin
+*.elf
+*.map
+
+testing.py
