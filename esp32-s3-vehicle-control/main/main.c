@@ -72,11 +72,11 @@ void forward() {
     enable_motors();
 }
 
-void right() {
-    // Move right wheel only to turn right
+void left() {
+    // Move right wheel only to turn left
     stop(); 
-    gpio_set_level(MOTOR_IN3_PIN, 0);
-    gpio_set_level(MOTOR_IN4_PIN, 1);
+    gpio_set_level(MOTOR_IN3_PIN, 1);
+    gpio_set_level(MOTOR_IN4_PIN, 0);
     gpio_set_level(MOTOR_IN1_PIN, 0);
     gpio_set_level(MOTOR_IN2_PIN, 0);
 
@@ -86,13 +86,13 @@ void right() {
     ledc_update_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_LEFT);
 }
 
-void left() {
-    // Move left wheel only to turn left
+void right() {
+    // Move left wheel only to turn right
     stop();
     gpio_set_level(MOTOR_IN3_PIN, 0);
     gpio_set_level(MOTOR_IN4_PIN, 0);
-    gpio_set_level(MOTOR_IN1_PIN, 0);
-    gpio_set_level(MOTOR_IN2_PIN, 1);
+    gpio_set_level(MOTOR_IN1_PIN, 1);
+    gpio_set_level(MOTOR_IN2_PIN, 0);
 
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_RIGHT, 0);  
     ledc_set_duty(MOTOR_PWM_MODE, MOTOR_PWM_CHANNEL_LEFT, duty_cycle);
@@ -157,7 +157,7 @@ void app_main(void) {
 
         stop();
         char key = getchar(); 
-        
+
         // Clear buff of everything received, read most recent
         int ch;
         while ((ch = fgetc(stdin)) != EOF);
