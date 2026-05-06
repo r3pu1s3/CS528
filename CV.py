@@ -56,7 +56,8 @@ def get_frame(cap):
     if not ret:
         return None
     
-    frame = cv2.flip(frame, 1)
+    # Rotate the camera feed 180 degrees.
+    frame = cv2.rotate(frame, cv2.ROTATE_180)
     return frame
 
 
