@@ -203,7 +203,6 @@ async def main():
     # 4 seconds to config center for gaze 
     # deadzone=0.008 threshold to recognize right and left gaze
     # 3 frames to sample gaze
-    gc = config(4, 0.008, 3)
 
     # then connect and start tracking
     print("Scanning for ESP32...")
@@ -214,6 +213,8 @@ async def main():
 
     async with BleakClient(device) as client:
         print("Connected!")
+        gc = config(4, 0.008, 3)
+
         await live_tracking(client, gc)
 
 
