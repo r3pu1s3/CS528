@@ -1,3 +1,4 @@
+"""
 import CV
 import time
 # import serial
@@ -9,8 +10,8 @@ from collections import deque
 import asyncio
 from bleak import BleakClient, BleakScanner
 
-# Note for MAC command to activate virtual python environment is 
-# source .venv/bin/activate 
+# Note for MAC command to activate virtual python environment is
+# source .venv/bin/activate
 
 
 SERVICE_UUID = "0000abcd-0000-1000-8000-00805f9b34fb"
@@ -48,7 +49,7 @@ def config(t, deadzone, confirm_frames):
     cap = CV.initialize_camera(0)
 
     detector = CV.init_detector()
-    
+
     # get time
     t0 = time.time()
     # run for 4 seconds
@@ -60,13 +61,13 @@ def config(t, deadzone, confirm_frames):
         img = CV.to_mp_img(frame)
 
         lm = CV.run_detector(detector, img)
-        
+
         # sample center gaze
         if lm:
             g = CV.gaze_xy(lm, h, w)
             xs.append(g[0]); ys.append(g[1])
-                
-        cv2.waitKey(1) 
+
+        cv2.waitKey(1)
         cv2.imshow("Feed", frame)
 
 
@@ -86,31 +87,31 @@ async def live_tracking(client, gc:Gaze_Classifier, closed_threshold = 0.15, ope
     # init camera and detector
     cap = CV.initialize_camera(0)
     detector = CV.init_detector()
-    
+
     # state variables
     blink_count = 0
     eye_state = "open"   # states: "open", "closed"
     avg_ear = 0.0
-    
+
     signal_active = False
     blink_times = deque()
     last_gesture_time = -1e9
     last_signal_text = "DEACTIVATED"
     # streams
     while(True):
-        
+
         # gets and process image
         frame = CV.get_frame(cap)
         img = CV.to_mp_img(frame)
-        
+
         # gets height and width
         h,w = frame.shape[:2]
-        
+
         # get face mesh
         lm = CV.run_detector(detector, img)
-        
-        
-        
+
+
+
         # if mesh  is successfully retrieved
         if lm:
             # get time
@@ -135,7 +136,7 @@ async def live_tracking(client, gc:Gaze_Classifier, closed_threshold = 0.15, ope
                     blink_times.append(now)
 
                     # status_text = "Blink counted"
-            
+
             # only keep track of recent blinks
             while blink_times and (now - blink_times[0] > gesture_window):
                 blink_times.popleft()
@@ -162,7 +163,7 @@ async def live_tracking(client, gc:Gaze_Classifier, closed_threshold = 0.15, ope
                 nx, ny = CV.gaze_xy(lm, h, w)
                 label, _ = gc.update(nx, ny)
                 # print(f"{nx}| {gc.cx} | {gc.history}")
-        
+
                 if label == "RIGHT":
                     '''
                     ROBOT COMMAND CODE FOR RIGHT
@@ -171,9 +172,9 @@ async def live_tracking(client, gc:Gaze_Classifier, closed_threshold = 0.15, ope
                     await asyncio.sleep(0.2)
                     # ser.write(b'd')
                     # Add delay here
-                    
+
                 elif label == "LEFT":
-                    '''             
+                    '''
                     ROBOT COMMAND CODE FOR LEFT
                     '''
                     await client.write_gatt_char(CHAR_UUID, b'a', response=False)
@@ -186,13 +187,13 @@ async def live_tracking(client, gc:Gaze_Classifier, closed_threshold = 0.15, ope
                     '''
                     await client.write_gatt_char(CHAR_UUID, b'w', response=False)
                     # ser.write(b'w')
-            
+
                 print(label)
                 cv2.putText(frame, label, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        
+
         # show image
         cv2.imshow("Gaze Direction", frame)
-        
+
         if cv2.waitKey(1) & 0xFF == ord('q'):  # wait 1ms, listen for keypress
             break
 
@@ -200,7 +201,7 @@ async def live_tracking(client, gc:Gaze_Classifier, closed_threshold = 0.15, ope
         await asyncio.sleep(0)
 
 async def main():
-    # 4 seconds to config center for gaze 
+    # 4 seconds to config center for gaze
     # deadzone=0.008 threshold to recognize right and left gaze
     # 3 frames to sample gaze
 
@@ -223,7 +224,7 @@ asyncio.run(main())
 
 
 
-# No bluetooth ver 
+# No bluetooth ver
 # import CV
 # import time
 # import serial
@@ -234,8 +235,8 @@ asyncio.run(main())
 # from collections import deque
 
 
-# # Note for MAC command to activate virtual python environment is 
-# # source .venv/bin/activate 
+# # Note for MAC command to activate virtual python environment is
+# # source .venv/bin/activate
 
 # # Port auto detection
 # def find_esp32_port():
@@ -268,7 +269,7 @@ asyncio.run(main())
 #     cap = CV.initialize_camera(0)
 
 #     detector = CV.init_detector()
-    
+#
 #     # get time
 #     t0 = time.time()
 #     # run for 4 seconds
@@ -276,71 +277,71 @@ asyncio.run(main())
 #         # get and process frame, return gaze
 #         frame = CV.get_frame(cap)
 #         h,w = frame.shape[:2]
-
+#
 #         img = CV.to_mp_img(frame)
-
+#
 #         lm = CV.run_detector(detector, img)
-        
+#
 #         # sample center gaze
 #         if lm:
 #             g = CV.gaze_xy(lm, h, w)
 #             xs.append(g[0]); ys.append(g[1])
-                
-#         cv2.waitKey(1) 
+#
+#         cv2.waitKey(1)
 #         cv2.imshow("Feed", frame)
-
-
+#
+#
 #     if xs and ys:
 #         cx, cy = float(np.median(xs)), float(np.median(ys))
 #         print("center:", cx, cy)
 #         # eval_js(f"setStatus('calibrated center: {cx:.3f}, {cy:.3f}')")
 #         cv2.destroyAllWindows()
-
+#
 #         return Gaze_Classifier(cx, cy, deadzone, confirm_frames)
 #     else:
 #         print("Failed to calibrate center. Ensure webcam is active.")
-
-
+#
+#
 # # does live tracking
 # def live_tracking(gc:Gaze_Classifier, closed_threshold = 0.15, open_threshold = 0.2, gesture_window = 3, gesture_cooldown=1.5):
 #     # init camera and detector
 #     cap = CV.initialize_camera(0)
 #     detector = CV.init_detector()
-    
+#
 #     # state variables
 #     blink_count = 0
 #     eye_state = "open"   # states: "open", "closed"
 #     avg_ear = 0.0
-    
+#
 #     signal_active = False
 #     blink_times = deque()
 #     last_gesture_time = -1e9
 #     last_signal_text = "DEACTIVATED"
 #     # streams
 #     while(True):
-        
+#
 #         # gets and process image
 #         frame = CV.get_frame(cap)
 #         img = CV.to_mp_img(frame)
-        
+#
 #         # gets height and width
 #         h,w = frame.shape[:2]
-        
+#
 #         # get face mesh
 #         lm = CV.run_detector(detector, img)
-        
-        
-        
+#
+#
+#
 #         # if mesh  is successfully retrieved
 #         if lm:
 #             # get time
 #             now = time.monotonic()
-
+#
 #             # gets open or closed status:
 #             left_ear = CV.eye_aspect_ratio(lm, CV.LEFT_EYE_IDX, w, h)
 #             right_ear = CV.eye_aspect_ratio(lm, CV.RIGHT_EYE_IDX, w, h)
 #             avg_ear = (left_ear + right_ear) / 2.0
-
+#
 #             if eye_state == "open":
 #                 status_text = "Eyes open"
 #                 if avg_ear < closed_threshold:
@@ -353,78 +354,231 @@ asyncio.run(main())
 #                     blink_count += 1
 #                     # note the time the user blinked
 #                     blink_times.append(now)
-
+#
 #                     # status_text = "Blink counted"
-            
+#
 #             # only keep track of recent blinks
 #             while blink_times and (now - blink_times[0] > gesture_window):
 #                 blink_times.popleft()
-
+#
 #             # Trigger only if not in cooldown
 #             if now - last_gesture_time >= gesture_cooldown:
 #                 if len(blink_times) >= 3:
 #                     signal_active = not signal_active
 #                     last_gesture_time = now
 #                     blink_times.clear()
-
+#
 #                     if signal_active:
 #                         last_signal_text = "ACTIVATED"
 #                         print("ACTIVATED")
 #                     else:
 #                         last_signal_text = "DEACTIVATED"
 #                         print("DEACTIVATED")
-
+#
 #             # print(blink_count)
 #             cv2.putText(frame, f"{last_signal_text}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-
+#
 #             # if activated, track gaze
 #             if signal_active:
 #                 nx, ny = CV.gaze_xy(lm, h, w)
-                
-
+#
+#
 #                 label, _ = gc.update(nx, ny)
 #                 # print(f"{nx}| {gc.cx} | {gc.history}")
-
-        
+#
+#
 #                 if label == "RIGHT":
 #                     '''
 #                     ROBOT COMMAND CODE FOR RIGHT
 #                     '''
 #                     ser.write(b'd')
-                    
+#
 #                 elif label == "LEFT":
-#                     '''             
+#                     '''
 #                     ROBOT COMMAND CODE FOR LEFT
 #                     '''
 #                     ser.write(b'a')
-                    
+#
 #                 else:
 #                     '''
 #                     ROBOT COMMAND CODE FOR CENTER
 #                     '''
 #                     ser.write(b'w')
-            
+#
 #                 print(label)
 #                 cv2.putText(frame, label, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        
+#
 #         # show image
 #         cv2.imshow("Gaze Direction", frame)
-        
+#
 #         if cv2.waitKey(1) & 0xFF == ord('q'):  # wait 1ms, listen for keypress
 #             break
-
-
+#
+#
 # # takes t seconds to config center for gaze
 # t=4
 # # a threshold to recognize right and left gaze
 # deadzone = 0.008
 # # number of frames to sample gaze
 # frames = 3
-
+#
 # gc = config(t, deadzone, frames)
-
+#
 # # live tracking based on coordinate stored in gc gaze classifier
 # live_tracking(gc)
+"""
+
+import asyncio
+import time
+from collections import deque
+
+import cv2
+from bleak import BleakClient, BleakScanner
+
+import CV
+import CV_NN
+from Gaze_Classifier import Gaze_Classifier
 
 
+SERVICE_UUID = "0000abcd-0000-1000-8000-00805f9b34fb"
+CHAR_UUID = "00001234-0000-1000-8000-00805f9b34fb"
+DEVICE_NAME = "ESP32-Vehicle"
 
+
+def menu():
+    while True:
+        pass
+
+
+def config(t, deadzone, confirm_frames):
+    cap = CV_NN.initialize_camera(0)
+    detector = CV_NN.init_detector()
+
+    try:
+        calibration = CV_NN.calibrate(
+            detector,
+            cap,
+            prep_seconds=1.5,
+            sample_seconds=max(3.0, float(t)),
+            min_samples_per_label=8,
+            window_name="Feed",
+        )
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+
+    if calibration is None:
+        print("Failed to calibrate gaze. Ensure webcam is active and both eyes are visible.")
+        return None, None
+
+    print("samples:", calibration.label_counts)
+    print("center:", calibration.center_x, calibration.center_y)
+    return detector, Gaze_Classifier(calibration.center_x, calibration.center_y, deadzone, confirm_frames)
+
+
+async def live_tracking(client, gaze_detector, gc: Gaze_Classifier, closed_threshold=0.15, open_threshold=0.2, gesture_window=3, gesture_cooldown=1.5):
+    cap = CV_NN.initialize_camera(0)
+    blink_detector = CV.init_detector()
+
+    eye_state = "open"
+    avg_ear = 0.0
+
+    signal_active = False
+    blink_times = deque()
+    last_gesture_time = -1e9
+    last_signal_text = "DEACTIVATED"
+
+    try:
+        while True:
+            frame = CV_NN.get_frame(cap)
+            if frame is None:
+                await asyncio.sleep(0)
+                continue
+
+            img = CV.to_mp_img(frame)
+            h, w = frame.shape[:2]
+            lm = CV.run_detector(blink_detector, img)
+
+            if lm:
+                now = time.monotonic()
+
+                left_ear = CV.eye_aspect_ratio(lm, CV.LEFT_EYE_IDX, w, h)
+                right_ear = CV.eye_aspect_ratio(lm, CV.RIGHT_EYE_IDX, w, h)
+                avg_ear = (left_ear + right_ear) / 2.0
+
+                if eye_state == "open":
+                    status_text = "Eyes open"
+                    if avg_ear < closed_threshold:
+                        eye_state = "closed"
+                else:
+                    status_text = "Eyes closed"
+                    if avg_ear > open_threshold:
+                        eye_state = "open"
+                        blink_times.append(now)
+
+                while blink_times and (now - blink_times[0] > gesture_window):
+                    blink_times.popleft()
+
+                if now - last_gesture_time >= gesture_cooldown and len(blink_times) >= 3:
+                    signal_active = not signal_active
+                    last_gesture_time = now
+                    blink_times.clear()
+
+                    if signal_active:
+                        last_signal_text = "ACTIVATED"
+                        print("ACTIVATED")
+                    else:
+                        last_signal_text = "DEACTIVATED"
+                        print("DEACTIVATED")
+
+                cv2.putText(frame, last_signal_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+                if signal_active:
+                    prediction = CV_NN.predict(gaze_detector, frame)
+                    if prediction is not None:
+                        label, _ = gc.update(prediction.gaze_x, prediction.gaze_y)
+
+                        if label == "RIGHT":
+                            await client.write_gatt_char(CHAR_UUID, b"d", response=False)
+                            await asyncio.sleep(0.2)
+                        elif label == "LEFT":
+                            await client.write_gatt_char(CHAR_UUID, b"a", response=False)
+                            await asyncio.sleep(0.2)
+                        else:
+                            await client.write_gatt_char(CHAR_UUID, b"w", response=False)
+
+                        CV_NN.draw_detection(frame, prediction.detection, prediction)
+                        print(label)
+                        cv2.putText(frame, label, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                    else:
+                        cv2.putText(frame, "Gaze unavailable", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+            cv2.imshow("Gaze Direction", frame)
+
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+
+            await asyncio.sleep(0)
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+
+
+async def main():
+    print("Scanning for ESP32...")
+    device = await BleakScanner.find_device_by_name(DEVICE_NAME, timeout=10)
+    if device is None:
+        print("ESP32 not found. Is it powered on and advertising?")
+        return
+
+    async with BleakClient(device) as client:
+        print("Connected!")
+        gaze_detector, gc = config(4, 0.18, 3)
+        if gaze_detector is None or gc is None:
+            return
+
+        await live_tracking(client, gaze_detector, gc)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
