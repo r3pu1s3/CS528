@@ -38,6 +38,9 @@
 #define MOTOR_PWM_RES           LEDC_TIMER_10_BIT  // PWM resolution (10-bit)
 #define MAX_DUTY_CYCLE          1023  // Maximum duty cycle for 10-bit resolution (1023)
 
+void start_advertising(void);
+static int gap_event_handler(struct ble_gap_event *event, void *arg);
+
 // Speed control
 int duty_cycle = 700;  //1023 is max it can go, 
                        // after testing it seems that 700 is the lowest it can go while still functioning normally
@@ -114,6 +117,18 @@ void right() {
 
 // More bluetooth stuff 
 
+static int gap_event_handler(struct ble_gap_event *event, void *arg) {
+    switch (event->type) {
+        case BLE_GAP_EVENT_DISCONNECT:
+            printf("Disconnected, restarting advertising...\n");
+            start_advertising();  // restart when client disconnects
+            break;
+        case BLE_GAP_EVENT_CONNECT:
+            printf("Connected!\n");
+            break;
+    }
+    return 0;
+}
 // Advertise so computer can find it
 void start_advertising(void) {
     struct ble_hs_adv_fields fields = {0};
@@ -126,7 +141,7 @@ void start_advertising(void) {
     struct ble_gap_adv_params adv_params = {0};
     adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
-    ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER, &adv_params, NULL, NULL);
+    ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER, &adv_params, gap_event_handler, NULL);
 }
 
 // Called when BLE stack finishes initializing, start advertising here
